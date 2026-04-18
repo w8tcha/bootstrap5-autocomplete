@@ -1,5 +1,6 @@
-import Autocomplete from "../autocomplete.js";
-import test from "ava";
+import {it, expect, expectTypeOf} from  'vitest';
+
+import Autocomplete from "../dist/autocomplete";
 
 let form = document.createElement("form");
 // Make our form available to jsdom
@@ -17,22 +18,25 @@ form.appendChild(disabledEl);
 // Somehow new Event syntax is not working
 Event = window.Event;
 
-test("it can create", (t) => {
+it("it can create", (t) => {
   let inst = new Autocomplete(singleEl);
-  t.is(inst.constructor.name, "Autocomplete");
+  expectTypeOf(inst.constructor).toEqualTypeOf(Autocomplete);
 });
-test("it can use init", (t) => {
+
+it("it can use init", (t) => {
   Autocomplete.init("input.autocomplete");
   let inst = Autocomplete.getInstance(singleEl);
-  t.is(inst.constructor.name, "Autocomplete");
+  expectTypeOf(inst).toEqualTypeOf(Autocomplete);
 });
-test("it can be disabled", (t) => {
+
+it("it can be disabled", (t) => {
   let disabledTags = Autocomplete.getInstance(disabledEl);
   let regularTags = Autocomplete.getInstance(singleEl);
-  t.truthy(disabledTags.isDisabled());
-  t.falsy(regularTags.isDisabled());
+  expect(disabledTags.isDisabled()).to.equal(true);
+  expect(regularTags.isDisabled()).to.equal(false);
 });
-test("it doesn't contain debug log", (t) => {
+
+it("it doesn't contain debug log", (t) => {
   let count = (Autocomplete.toString().match(/console\.log/g) || []).length;
-  t.is(count, 0, "The dev should pay more attention");
+  expect(count, "The dev should pay more attention").to.equal(0);
 });

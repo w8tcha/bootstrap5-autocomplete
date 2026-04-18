@@ -1,0 +1,532 @@
+/**
+ * Bootstrap 5 autocomplete 1.1.42
+ * https://github.com/lekoala/bootstrap5-autocomplete
+ * @license MIT
+ */
+//#region src/DEFAULTS.ts
+var e = {
+	showAllSuggestions: !1,
+	suggestionsThreshold: 1,
+	maximumItems: 0,
+	autoselectFirst: !0,
+	ignoreEnter: !1,
+	tabSelect: !1,
+	updateOnSelect: !1,
+	highlightTyped: !1,
+	highlightClass: "",
+	fullWidth: !1,
+	fixed: !1,
+	fuzzy: !1,
+	startsWith: !1,
+	fillIn: !1,
+	preventBrowserAutocomplete: !1,
+	itemClass: "",
+	activeClasses: ["bg-primary", "text-white"],
+	labelField: "label",
+	valueField: "value",
+	searchFields: ["label"],
+	queryParam: "query",
+	items: [],
+	source: null,
+	hiddenInput: !1,
+	hiddenValue: "",
+	clearControl: "",
+	datalist: "",
+	server: "",
+	serverMethod: "GET",
+	serverParams: {},
+	serverDataKey: "data",
+	fetchOptions: {},
+	liveServer: !1,
+	noCache: !0,
+	debounceTime: 300,
+	notFoundMessage: "",
+	onRenderItem: (e, t, n) => t,
+	onSelectItem: (e, t) => {},
+	onClearItem: (e, t) => {},
+	onServerResponse: (e, t) => e.json(),
+	onServerError: (e, t, n) => {
+		e.name === "AbortError" || t.aborted || console.error(e);
+	},
+	onChange: (e, t) => {},
+	onBeforeFetch: (e) => {},
+	onAfterFetch: (e) => {}
+}, t = "is-loading", n = "is-active", r = "show", i = "next", a = "prev", o = /* @__PURE__ */ new WeakMap(), s = 0, c = 0;
+function l(e, t = 300) {
+	let n;
+	return (...r) => {
+		clearTimeout(n), n = setTimeout(() => {
+			e(...r);
+		}, t);
+	};
+}
+function u(e) {
+	return e.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+}
+function d(e) {
+	return e ? u(e.toString()).toLowerCase() : "";
+}
+function f(e, t) {
+	if (e.indexOf(t) >= 0) return !0;
+	let n = 0;
+	for (let r = 0; r < t.length; r++) {
+		let i = t[r];
+		if (i !== " " && (n = e.indexOf(i, n) + 1, n <= 0)) return !1;
+	}
+	return !0;
+}
+function p(e, t) {
+	return e.parentNode.insertBefore(t, e.nextSibling);
+}
+function m(e) {
+	let t = document.createElement("textarea");
+	return t.innerHTML = e, t.value;
+}
+function h(e, t) {
+	for (let [n, r] of Object.entries(t)) e.setAttribute(n, r);
+}
+function g(e) {
+	e.ariaLabel = e.innerText, e.innerHTML = e.innerText.split("").map((e) => e + "&zwj;").join("");
+}
+function _(e, t = window) {
+	return e.split(".").reduce((e, t) => e[t], t);
+}
+var v = class {
+	_searchInput;
+	_config;
+	_isMouse;
+	_preventInput;
+	_keyboardNavigation;
+	_searchFunc;
+	_hiddenInput;
+	_dropElement;
+	_items;
+	_abortController;
+	_timer;
+	constructor(e, t = {}) {
+		if (!(e instanceof HTMLElement)) {
+			console.error("Invalid element", e);
+			return;
+		}
+		o.set(e, this), s++, c++, this._searchInput = e, this._configure(t), this._isMouse = !1, this._preventInput = !1, this._keyboardNavigation = !1, this._abortController = null, this._timer = null, this._hiddenInput = null, this._items = [], this._searchFunc = l(() => {
+			this._loadFromServer(!0);
+		}, this._config.debounceTime), this._configureSearchInput(), this._configureDropElement(), this._config.fixed && (document.addEventListener("scroll", this, !0), window.addEventListener("resize", this));
+		let n = this._getClearControl();
+		n && n.addEventListener("click", this), [
+			"focus",
+			"change",
+			"blur",
+			"input",
+			"beforeinput",
+			"keydown"
+		].forEach((e) => {
+			this._searchInput.addEventListener(e, this);
+		}), [
+			"mousemove",
+			"mouseenter",
+			"mouseleave"
+		].forEach((e) => {
+			this._dropElement.addEventListener(e, this);
+		}), this._fetchData();
+	}
+	static init(e = "input.autocomplete", t = {}) {
+		document.querySelectorAll(e).forEach((e) => {
+			this.getOrCreateInstance(e, t);
+		});
+	}
+	static getInstance(e) {
+		return o.has(e) ? o.get(e) : null;
+	}
+	static getOrCreateInstance(e, t = {}) {
+		return this.getInstance(e) || new this(e, t);
+	}
+	dispose() {
+		c--, [
+			"focus",
+			"change",
+			"blur",
+			"input",
+			"beforeinput",
+			"keydown"
+		].forEach((e) => {
+			this._searchInput.removeEventListener(e, this);
+		}), [
+			"mousemove",
+			"mouseenter",
+			"mouseleave"
+		].forEach((e) => {
+			this._dropElement.removeEventListener(e, this);
+		});
+		let e = this._getClearControl();
+		e && e.removeEventListener("click", this), this._config.fixed && c <= 0 && (document.removeEventListener("scroll", this, !0), window.removeEventListener("resize", this)), this._dropElement.parentElement?.removeChild(this._dropElement), o.delete(this._searchInput);
+	}
+	_getClearControl() {
+		return this._config.clearControl ? document.querySelector(this._config.clearControl) : null;
+	}
+	handleEvent = (e) => {
+		["scroll", "resize"].includes(e.type) ? (this._timer && window.cancelAnimationFrame(this._timer), this._timer = window.requestAnimationFrame(() => {
+			this[`on${e.type}`](e);
+		})) : this[`on${e.type}`](e);
+	};
+	_configure(t = {}) {
+		this._config = Object.assign({}, e);
+		let n = {
+			...t,
+			...this._searchInput.dataset
+		}, r = (e) => [
+			"true",
+			"false",
+			"1",
+			"0",
+			!0,
+			!1
+		].includes(e) && !!JSON.parse(e);
+		for (let [t, i] of Object.entries(e)) {
+			if (n[t] === void 0) continue;
+			let e = n[t];
+			switch (typeof i) {
+				case "number":
+					this._config[t] = parseInt(e);
+					break;
+				case "boolean":
+					this._config[t] = r(e);
+					break;
+				case "string":
+					this._config[t] = e.toString();
+					break;
+				case "object":
+					if (Array.isArray(i)) if (typeof e == "string") {
+						let n = e.includes("|") ? "|" : ",";
+						this._config[t] = e.split(n);
+					} else this._config[t] = e;
+					else this._config[t] = typeof e == "string" ? JSON.parse(e) : e;
+					break;
+				case "function":
+					this._config[t] = typeof e == "string" ? window[e] : e;
+					break;
+				default: this._config[t] = e;
+			}
+		}
+	}
+	_configureSearchInput() {
+		if (this._searchInput.autocomplete = "off", this._searchInput.spellcheck = !1, h(this._searchInput, {
+			"aria-autocomplete": "list",
+			"aria-haspopup": "menu",
+			"aria-expanded": "false",
+			role: "combobox"
+		}), this._searchInput.id && this._config.preventBrowserAutocomplete) {
+			let e = document.querySelector(`[for="${this._searchInput.id}"]`);
+			e && g(e);
+		}
+		this._hiddenInput = null, this._config.hiddenInput && (this._hiddenInput = document.createElement("input"), this._hiddenInput.type = "hidden", this._hiddenInput.value = this._config.hiddenValue, this._hiddenInput.name = this._searchInput.name, this._searchInput.name = "_" + this._searchInput.name, p(this._searchInput, this._hiddenInput));
+	}
+	_configureDropElement() {
+		this._dropElement = document.createElement("ul"), this._dropElement.id = "ac-menu-" + s, this._dropElement.classList.add("dropdown-menu", "autocomplete-menu", "p-0"), this._dropElement.style.maxHeight = "280px", this._config.fullWidth || (this._dropElement.style.maxWidth = "360px"), this._config.fixed && (this._dropElement.style.position = "fixed"), this._dropElement.style.overflowY = "auto", this._dropElement.style.overscrollBehavior = "contain", this._dropElement.style.textAlign = "unset", p(this._searchInput, this._dropElement), this._searchInput.setAttribute("aria-controls", this._dropElement.id);
+	}
+	onclick(e) {
+		e.target instanceof Element && e.target.matches(this._config.clearControl) && this.clear();
+	}
+	onbeforeinput(e) {
+		this._preventInput || this._hiddenInput && this._hiddenInput.value && (this._config.onClearItem(this._searchInput.value, this), this._hiddenInput.value = "");
+	}
+	oninput(e) {
+		this._preventInput || this.showOrSearch();
+	}
+	onchange(e) {
+		let t = this._searchInput.value, n = this._items.find((e) => e.label === t);
+		this._config.onChange(n ?? t, this);
+	}
+	onblur(e) {
+		let t = e.relatedTarget;
+		if (this._isMouse && t instanceof HTMLElement && (t.classList.contains("modal") || t.classList.contains("autocomplete-menu"))) {
+			this._searchInput.focus();
+			return;
+		}
+		setTimeout(() => {
+			this.hideSuggestions();
+		}, 100);
+	}
+	onfocus(e) {
+		this.showOrSearch();
+	}
+	onkeydown(e) {
+		switch (e.keyCode || e.key) {
+			case 13:
+			case "Enter":
+				if (this.isDropdownVisible()) {
+					let t = this.getSelection();
+					t && t.click(), (t || !this._config.ignoreEnter) && e.preventDefault();
+				}
+				break;
+			case 9:
+			case "Tab":
+				if (this.isDropdownVisible() && this._config.tabSelect) {
+					let t = this.getSelection();
+					t && (t.click(), e.preventDefault());
+				}
+				break;
+			case 38:
+			case "ArrowUp":
+				e.preventDefault(), this._keyboardNavigation = !0, this._moveSelection(a);
+				break;
+			case 40:
+			case "ArrowDown":
+				e.preventDefault(), this._keyboardNavigation = !0, this.isDropdownVisible() ? this._moveSelection(i) : this.showOrSearch(!1);
+				break;
+			case 27:
+			case "Escape":
+				this.isDropdownVisible() && (this._searchInput.focus(), this.hideSuggestions());
+				break;
+		}
+	}
+	onmouseenter(e) {
+		this._isMouse = !0;
+	}
+	onmousemove(e) {
+		this._isMouse = !0, this._keyboardNavigation = !1;
+	}
+	onmouseleave(e) {
+		this._isMouse = !1, this.removeSelection();
+	}
+	onscroll(e) {
+		this._positionMenu();
+	}
+	onresize(e) {
+		this._positionMenu();
+	}
+	getConfig(e) {
+		return e === void 0 ? this._config : this._config[e];
+	}
+	setConfig(e, t) {
+		this._config[e] = t;
+	}
+	setData(e) {
+		this._items = [], this._addItems(e);
+	}
+	enable() {
+		this._searchInput.setAttribute("disabled", "");
+	}
+	disable() {
+		this._searchInput.removeAttribute("disabled");
+	}
+	isDisabled() {
+		return this._searchInput.hasAttribute("disabled") || this._searchInput.disabled || this._searchInput.hasAttribute("readonly");
+	}
+	isDropdownVisible() {
+		return this._dropElement.classList.contains(r);
+	}
+	clear() {
+		let e = this._searchInput.value;
+		this._searchInput.value = "", this._hiddenInput && (this._hiddenInput.value = ""), this._config.onClearItem(e, this);
+	}
+	getSelection() {
+		return this._dropElement.querySelector("a." + n);
+	}
+	removeSelection() {
+		let e = this.getSelection();
+		e && e.classList.remove(...this._activeClasses());
+	}
+	_activeClasses() {
+		return [...this._config.activeClasses, n];
+	}
+	_isItemEnabled(e) {
+		if (e.style.display === "none") return !1;
+		let t = e.firstElementChild;
+		return t?.tagName === "A" && !t.classList.contains("disabled");
+	}
+	_moveSelection(e = i, t = null) {
+		let n = this.getSelection();
+		if (n) {
+			let r = e === i ? "nextSibling" : "previousSibling";
+			t = n.parentNode;
+			do
+				t = t[r];
+			while (t && !this._isItemEnabled(t));
+			t ? (n.classList.remove(...this._activeClasses()), e === a ? t.parentNode && (t.parentNode.scrollTop = t.offsetTop - t.parentNode.offsetTop) : t.offsetTop > t.parentNode.offsetHeight - t.offsetHeight && (t.parentNode.scrollTop += t.offsetHeight)) : n && (t = n.parentElement);
+		} else {
+			if (e === a) return t;
+			if (!t) for (t = this._dropElement.firstChild; t && !this._isItemEnabled(t);) t = t.nextSibling;
+		}
+		if (t) {
+			let e = t.querySelector("a");
+			e.classList.add(...this._activeClasses()), this._searchInput.setAttribute("aria-activedescendant", e.id), this._config.updateOnSelect && (this._searchInput.value = e.dataset.label ?? "");
+		} else this._searchInput.setAttribute("aria-activedescendant", "");
+		return t;
+	}
+	_shouldShow() {
+		return this.isDisabled() ? !1 : this._searchInput.value.length >= this._config.suggestionsThreshold;
+	}
+	showOrSearch(e = !0) {
+		if (e && !this._shouldShow()) {
+			this.hideSuggestions();
+			return;
+		}
+		this._config.liveServer ? this._searchFunc !== void 0 && this._searchFunc() : this._config.source ? this._config.source(this._searchInput.value, (e) => {
+			this.setData(e), this._showSuggestions();
+		}) : this._showSuggestions();
+	}
+	_createGroup(e) {
+		let t = this._createLi(), n = document.createElement("span");
+		return t.append(n), n.classList.add("dropdown-header", "text-truncate"), n.innerHTML = e, t;
+	}
+	_createItem(e, t) {
+		let n = t.label;
+		if (this._config.highlightTyped) {
+			let t = d(n).indexOf(e);
+			t !== -1 && (n = n.substring(0, t) + `<mark class="${this._config.highlightClass}">${n.substring(t, t + e.length)}</mark>` + n.substring(t + e.length, n.length));
+		}
+		n = this._config.onRenderItem(t, n, this);
+		let r = this._createLi(), i = document.createElement("a");
+		if (r.append(i), i.id = this._dropElement.id + "-" + this._dropElement.children.length, i.classList.add("dropdown-item", "text-truncate"), this._config.itemClass && i.classList.add(...this._config.itemClass.split(" ")), i.setAttribute("data-value", t.value), i.setAttribute("data-label", t.label), i.setAttribute("tabindex", "-1"), i.setAttribute("role", "menuitem"), i.setAttribute("href", "#"), i.innerHTML = n, t.data) for (let [e, n] of Object.entries(t.data)) i.dataset[e] = n;
+		if (this._config.fillIn) {
+			let e = document.createElement("button");
+			e.type = "button", e.classList.add("btn", "btn-link", "border-0"), e.innerHTML = "<svg width=\"16\" height=\"16\" fill=\"currentColor\" viewBox=\"0 0 16 16\">\n      <path fill-rule=\"evenodd\" d=\"M2 2.5a.5.5 0 0 1 .5-.5h6a.5.5 0 0 1 0 1H3.707l10.147 10.146a.5.5 0 0 1-.708.708L3 3.707V8.5a.5.5 0 0 1-1 0z\"/>\n      </svg>", r.append(e), r.classList.add("d-flex", "justify-content-between"), e.addEventListener("click", () => {
+				this._searchInput.value = t.label, this._searchInput.focus();
+			});
+		}
+		return i.addEventListener("mouseenter", () => {
+			if (this._keyboardNavigation || !this._isMouse) return;
+			this.removeSelection();
+			let e = r.querySelector("a");
+			e.classList.add(...this._activeClasses()), this._searchInput.setAttribute("aria-activedescendant", e.id);
+		}), i.addEventListener("mousedown", (e) => {
+			e.preventDefault();
+		}), i.addEventListener("click", (e) => {
+			e.preventDefault(), this._preventInput = !0, this._searchInput.value = m(t.label), this._hiddenInput && (this._hiddenInput.value = t.value), this._config.onSelectItem(t, this), this.hideSuggestions(), this._preventInput = !1;
+		}), r;
+	}
+	_getActiveElement(e = document) {
+		let t = e.activeElement;
+		return t ? t.shadowRoot ? this._getActiveElement(t.shadowRoot) : t : null;
+	}
+	_showSuggestions() {
+		if (this._getActiveElement() !== this._searchInput) return;
+		let e = d(this._searchInput.value);
+		this._dropElement.innerHTML = "";
+		let t = 0, n = null, r = [];
+		for (let i of this._items) {
+			let a = this._config.showAllSuggestions || e.length === 0, o = e.length === 0 && this._config.suggestionsThreshold === 0;
+			e.length > 0 && this._config.searchFields.forEach((t) => {
+				let n = d(i[t]), r = !1;
+				if (this._config.fuzzy) r = f(n, e);
+				else {
+					let t = n.indexOf(e);
+					r = this._config.startsWith ? t === 0 : t >= 0;
+				}
+				r && (o = !0);
+			});
+			let s = o || e.length === 0;
+			if (a || o) {
+				if (t++, i.group && !r.includes(i.group)) {
+					let e = this._createGroup(i.group);
+					this._dropElement.appendChild(e), r.push(i.group);
+				}
+				let a = this._createItem(e, i);
+				if (!n && s && (n = a), this._dropElement.appendChild(a), this._config.maximumItems > 0 && t >= this._config.maximumItems) break;
+			}
+		}
+		if (n && this._config.autoselectFirst && (this.removeSelection(), this._moveSelection(i, n)), t === 0) if (this._config.notFoundMessage) {
+			let e = this._createLi();
+			e.innerHTML = `<span class="dropdown-item">${this._config.notFoundMessage}</span>`, this._dropElement.appendChild(e), this._showDropdown();
+		} else this.hideSuggestions();
+		else this._showDropdown();
+	}
+	_createLi() {
+		let e = document.createElement("li");
+		return e.setAttribute("role", "presentation"), e;
+	}
+	_showDropdown() {
+		this._dropElement.classList.add(r), this._dropElement.setAttribute("role", "menu"), h(this._searchInput, { "aria-expanded": "true" }), this._positionMenu();
+	}
+	toggleSuggestions(e = !0) {
+		this._dropElement.classList.contains(r) ? this.hideSuggestions() : this.showOrSearch(e);
+	}
+	hideSuggestions() {
+		this._dropElement.classList.remove(r), h(this._searchInput, { "aria-expanded": "false" }), this.removeSelection();
+	}
+	getInput() {
+		return this._searchInput;
+	}
+	getDropMenu() {
+		return this._dropElement;
+	}
+	getHiddenInput() {
+		return this._hiddenInput;
+	}
+	_positionMenu() {
+		let e = this._searchInput.getBoundingClientRect(), t = this._searchInput.dir === "rtl" || this._searchInput.dir === "" && document.dir === "rtl", n = this._config.fullWidth, r = this._config.fixed, i = null, a = null;
+		r && (i = e.x, a = e.y + e.height, t && !n && (i -= this._dropElement.offsetWidth - e.width)), this._dropElement.style.transform = "unset", n && (this._dropElement.style.width = this._searchInput.offsetWidth + "px"), i !== null && (this._dropElement.style.left = i + "px"), a !== null && (this._dropElement.style.top = a + "px");
+		let o = this._dropElement.getBoundingClientRect(), s = window.innerHeight;
+		if (o.y + o.height > s) {
+			let t = n ? e.height + 4 : e.height;
+			this._dropElement.style.transform = `translateY(calc(-100.1% - ${t}px))`;
+		}
+	}
+	_fetchData() {
+		this._items = [], this._addItems(this._config.items);
+		let e = this._config.datalist;
+		if (e) {
+			let t = document.querySelector(`#${e}`);
+			if (t) {
+				let e = Array.from(t.children).map((e) => ({
+					value: e.getAttribute("value") ?? e.innerHTML.toLowerCase(),
+					label: e.innerHTML
+				}));
+				this._addItems(e);
+			} else console.error(`Datalist not found ${e}`);
+		}
+		this._setHiddenVal(), this._config.server && !this._config.liveServer && this._loadFromServer();
+	}
+	_setHiddenVal() {
+		if (this._config.hiddenInput && !this._config.hiddenValue) for (let e of this._items) e.label == this._searchInput.value && this._hiddenInput && (this._hiddenInput.value = e.value);
+	}
+	_normalizeData(e) {
+		return Array.isArray(e) ? e : Object.entries(e).map(([e, t]) => ({
+			value: e,
+			label: t
+		}));
+	}
+	_addItems(e) {
+		let t = this._normalizeData(e);
+		for (let e of t) {
+			if (e.group && e.items) {
+				e.items.forEach((t) => t.group = e.group), this._addItems(e.items);
+				continue;
+			}
+			let t = typeof e == "string" ? e : e.label, n = typeof e == "object" ? { ...e } : {
+				label: e,
+				value: e
+			};
+			n.label = e[this._config.labelField] ?? t, n.value = e[this._config.valueField] ?? t, n.label && this._items.push(n);
+		}
+	}
+	_loadFromServer(e = !1) {
+		this._abortController && this._abortController.abort(), this._abortController = new AbortController(), this._config.onBeforeFetch(this);
+		let n = this._searchInput.dataset.serverParams ? JSON.parse(this._searchInput.dataset.serverParams) : {};
+		typeof n == "string" && (n = JSON.parse(n));
+		let r = Object.assign({}, this._config.serverParams, n);
+		r[this._config.queryParam] = this._searchInput.value, this._config.noCache && (r.t = Date.now()), r.related && (Array.isArray(r.related) ? r.related : [r.related]).forEach((e) => {
+			let t = document.getElementById(e);
+			if (t && "value" in t) {
+				let e = t.getAttribute("name");
+				e && (r[e] = t.value);
+			}
+		});
+		let i = new URLSearchParams(r), a = this._config.server, o = Object.assign({}, this._config.fetchOptions, {
+			method: this._config.serverMethod || "GET",
+			signal: this._abortController.signal
+		});
+		o.method === "POST" ? o.body = i : (a += a.indexOf("?") === -1 ? "?" : "&", a += i.toString()), this._searchInput.classList.add(t), fetch(a, o).then((e) => this._config.onServerResponse(e, this)).then((t) => {
+			let n = _(this._config.serverDataKey, t) ?? t;
+			this.setData(n), this._setHiddenVal(), this._abortController = null, e && this._showSuggestions();
+		}).catch((e) => {
+			this._config.onServerError(e, this._abortController.signal, this);
+		}).finally(() => {
+			this._searchInput.classList.remove(t), this._config.onAfterFetch(this);
+		});
+	}
+};
+//#endregion
+export { v as default };
+
+//# sourceMappingURL=autocomplete.js.map
