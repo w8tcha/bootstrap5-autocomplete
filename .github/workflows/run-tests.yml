@@ -1,4 +1,4 @@
-name: Run Ava Tests
+name: Build and test
 
 on:
   push:
