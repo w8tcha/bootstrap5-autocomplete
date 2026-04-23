@@ -1,4 +1,4 @@
-# Autocomplete for Bootstrap 4/5
+# Autocomplete for Bootstrap 5
 
 [![NPM](https://img.shields.io/npm/v/bootstrap5-autocomplete.svg)](https://www.npmjs.com/package/bootstrap5-autocomplete)
 [![Downloads](https://img.shields.io/npm/dt/bootstrap5-autocomplete.svg)](https://www.npmjs.com/package/bootstrap5-autocomplete)
