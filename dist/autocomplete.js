@@ -320,7 +320,7 @@ var v = class {
 		this._searchInput.value = "", this._hiddenInput && (this._hiddenInput.value = ""), this._config.onClearItem(e, this);
 	}
 	getSelection() {
-		return this._dropElement.querySelector("a." + n);
+		return this._dropElement.querySelector("a.is-active");
 	}
 	removeSelection() {
 		let e = this.getSelection();
@@ -354,7 +354,7 @@ var v = class {
 		return t;
 	}
 	_shouldShow() {
-		return this.isDisabled() ? !1 : this._searchInput.value.length >= this._config.suggestionsThreshold;
+		return !this.isDisabled() && this._searchInput.value.length >= this._config.suggestionsThreshold;
 	}
 	showOrSearch(e = !0) {
 		if (e && !this._shouldShow()) {
