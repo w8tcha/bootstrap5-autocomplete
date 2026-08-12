@@ -274,9 +274,7 @@ var v = class {
 				e.preventDefault(), this._keyboardNavigation = !0, this.isDropdownVisible() ? this._moveSelection(i) : this.showOrSearch(!1);
 				break;
 			case 27:
-			case "Escape":
-				this.isDropdownVisible() && (this._searchInput.focus(), this.hideSuggestions());
-				break;
+			case "Escape": this.isDropdownVisible() && (this._searchInput.focus(), this.hideSuggestions());
 		}
 	}
 	onmouseenter(e) {

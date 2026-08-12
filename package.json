@@ -10,7 +10,7 @@
     "require": "./dist/autocomplete.umd.cjs"
   },
   "scripts": {
-    "update-deps": "npx npm-check-updates -u",
+    "update-deps": "set npm_config_allow_scripts=&& npm-check -y",
     "test": "vitest",
     "dev": "vite",
     "build": "tsc && vite build"
@@ -34,7 +34,7 @@
     "jsdom": "^30.0.1"
   },
   "dependencies": {
-    "vite": "^8.1.5",
+    "vite": "^8.2.1",
     "vite-plugin-banner": "^0.8.1",
     "vite-plugin-dts": "^5.0.3",
     "vitest": "^4.1.10"
