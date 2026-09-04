@@ -36,7 +36,7 @@
   "dependencies": {
     "vite": "^8.2.2",
     "vite-plugin-banner": "^0.8.1",
-    "vite-plugin-dts": "^5.0.3",
-    "vitest": "^4.1.11"
+    "vite-plugin-dts": "^5.1.0",
+    "vitest": "^5.0.0"
   }
 }
